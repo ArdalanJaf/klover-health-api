@@ -6,7 +6,7 @@ const router = express.Router();
 module.exports = router;
 const sendEmail = require("./email/nodeMailer");
 
-router.post("/messaging", async (req, res) => {
+router.post("/contact", async (req, res) => {
   try {
     const isJoiErrorsResults = await isJoiErrors(req.body);
     // console.log(isJoiErrorsResults);
@@ -33,6 +33,42 @@ router.post("/messaging", async (req, res) => {
     }
   } catch (error) {
     res.send({ status: 0 });
+  }
+});
+
+router.get("/admin_contact", async (_, res) => {
+  // console.log("recieved");
+  try {
+    let result = await pConnection(queries.getAdminContact());
+    res.send({ status: 1, result });
+  } catch (error) {
+    res.send({ status: 0, error });
+  }
+});
+
+// req.body = {phone: "x", email: "x"}
+router.post("/admin_contact", async (req, res) => {
+  console.log("recieved");
+  try {
+    const { email, phone } = req.body;
+    let results;
+    if (email && phone) {
+      results = await pConnection(
+        queries.addAdminContact(email.toString(), phone.toString())
+      );
+    } else {
+      let oldContact = await pConnection(queries.getAdminContact());
+      let oldPhone = oldContact[0].phone;
+      let oldEmail = oldContact[0].email;
+      results = !phone
+        ? await pConnection(queries.addAdminContact(email.toString(), oldPhone))
+        : await pConnection(
+            queries.addAdminContact(oldEmail, phone.toString())
+          );
+    }
+    res.send({ status: 1 });
+  } catch (error) {
+    res.send({ status: 0, error });
   }
 });
 
