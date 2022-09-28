@@ -19,7 +19,7 @@ const isJoiErrors = async (payload) => {
     return false;
   } catch (errors) {
     // if validation fails, return errors to notify user.
-    console.log(errors.details);
+    // console.log(errors.details);
     let joiErrors = {};
     errors.details.forEach((e) => (joiErrors[e.context.label] = e.message));
     return joiErrors;

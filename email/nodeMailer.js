@@ -11,7 +11,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-function sendEmail(name, email, message) {
+function sendEmail(clientEmail, name, email, message) {
   const timeStamp = () => {
     let now = Date.now();
     return new Date(now).toString();
@@ -19,7 +19,7 @@ function sendEmail(name, email, message) {
 
   const mailOptions = {
     from: process.env.EMAILUSER,
-    to: process.env.EMAILUSER,
+    to: clientEmail,
     subject: `Site-Message recieved from ${name}`,
     text: `
     Name: ${name}
