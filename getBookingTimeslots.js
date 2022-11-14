@@ -14,7 +14,7 @@ const getBookingTimeslots = (
   available = [],
   excSlots = [],
   excDates = [],
-  noOfMonths = 1
+  noOfMonths = 3
 ) => {
   //   const { available, exceptions } = timeslots;
   try {
@@ -24,7 +24,7 @@ const getBookingTimeslots = (
     // how many months of timeslots should be generated
     let finalDate = new Date();
     const MAX_MONTHS_TO_GEN_DATES = noOfMonths;
-    finalDate.setMonth(now.getMonth() + MAX_MONTHS_TO_GEN_DATES); //mutable
+    finalDate.setMonth(now.getUTCMonth() + MAX_MONTHS_TO_GEN_DATES); //mutable
     oneDay = 1000 * 60 * 60 * 24;
     totalDays = ((finalDate.getTime() - now.getTime()) / oneDay).toFixed();
 
@@ -37,7 +37,7 @@ const getBookingTimeslots = (
       // create timeslot (date obj) for each week upto finalDate
       for (let i = 0; i < totalDays; i += 7) {
         let timeslot = new Date(date.getTime());
-        timeslot.setDate(date.getDate() + i);
+        timeslot.setDate(date.getUTCDate() + i);
 
         // check if date of timeslot is in exception list
         if (!isDateException(timeslot, excDates)) {
@@ -59,12 +59,12 @@ const getBookingTimeslots = (
   }
 
   function matchDateToDay(date, targetDay) {
-    if (date.getDay() === targetDay) return date;
+    if (date.getUTCDay() === targetDay) return date;
     let week = [0, 1, 2, 3, 4, 5, 6];
-    let temp = week.splice(0, date.getDay());
+    let temp = week.splice(0, date.getUTCDay());
     week = week.concat(temp);
     week.splice(week.findIndex((e) => e === targetDay));
-    date.setDate(date.getDate() + week.length);
+    date.setDate(date.getUTCDate() + week.length);
     return date;
   }
 
@@ -81,7 +81,7 @@ const getBookingTimeslots = (
         // date range
         let startExcDate = exc[0];
         let endExcDate = new Date(exc[1]);
-        endExcDate.setDate(endExcDate.getDate() + 1);
+        endExcDate.setDate(endExcDate.getUTCDate() + 1);
         return (
           date.getTime() >= startExcDate &&
           date.getTime() < endExcDate.getTime()
@@ -94,6 +94,12 @@ const getBookingTimeslots = (
 
   function isTimeslotException(date, excArray) {
     return excArray.includes(date.getTime());
+  }
+
+  function isDST(d) {
+    let jan = new Date(d.getFullYear(), 0, 1).getTimezoneOffset();
+    let jul = new Date(d.getFullYear(), 6, 1).getTimezoneOffset();
+    return Math.max(jan, jul) !== d.getTimezoneOffset();
   }
 };
 module.exports = getBookingTimeslots;

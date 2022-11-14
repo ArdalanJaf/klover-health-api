@@ -14,10 +14,11 @@ router.post("/", async (req, res) => {
     if (isJoiErrorsResults === false) {
       const { email, name, message } = req.body;
 
-      const results = await pConnection(queries.getAdminContact());
-      const clientEmail = results[0].email;
-
-      await sendEmail(clientEmail, name, email, message);
+      await sendEmail("contact", {
+        custName: name,
+        custEmail: email,
+        custMessage: message,
+      });
 
       // 3. Tell front-end it worked.
       res.send({ status: 1 });
