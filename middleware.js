@@ -9,15 +9,16 @@ module.exports = {
       res.send({ status: 0, error: "No token sent." });
       return;
     }
-    console.log("token");
 
     const results = await pConnection(
       queriesLogin.checkUserToken(req.headers.token)
     );
     if (results.length) {
+      console.log("token valid");
       req.userId = results[0].userId;
       next();
     } else {
+      console.log("token invalid");
       res.send({ status: 0, error: "Sorry, wrong token." });
     }
   },
