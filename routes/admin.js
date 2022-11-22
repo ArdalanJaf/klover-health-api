@@ -61,6 +61,17 @@ router.get("/prices", async (_, res) => {
   }
 });
 
+router.post("/change_prices", middleware.validateToken, async (req, res) => {
+  try {
+    await pConnection(
+      queries.addPrices(req.body.preAssessment, req.body.assessment)
+    );
+    res.send({ status: 1 });
+  } catch (error) {
+    res.send({ status: 0, error });
+  }
+});
+
 // calculates and returns available timeslots
 router.get("/timeslots", async (_, res) => {
   console.log("timeslots req recieved");
@@ -127,10 +138,10 @@ router.get("/unavailability", middleware.validateToken, async (_, res) => {
       JSON.stringify(await pConnection(queries.getUnavailability()))
     );
     unavailability = splitDatesAndSlots(sortExceptionObjs(unavailability));
-
+    console.log(unavailability.dates);
     res.send({
       status: 1,
-      timeslotInfo: { timeslots, unavailability: unavailability.dates },
+      unavailability: unavailability.dates,
     });
   } catch (error) {
     console.log(error);
@@ -177,24 +188,11 @@ router.post(
       // if (sDate === eDate) eDate = null;
       // console.log(dMYToUTCTime(endDate));
 
-      // function dMYToUTCTime(dmy, returnDate = false) {
-      //   let date = new Date();
-      //   date.setUTCFullYear(dmy.year);
-      //   date.setUTCMonth(dmy.month);
-      //   date.setUTCDate(dmy.date);
-      //   date.setUTCHours(0);
-      //   date.setUTCMinutes(0);
-      //   date.setUTCSeconds(0);
-      //   date.setUTCMilliseconds(0);
-      //   if (returnDate) return date;
-      //   return date.getTime();
-      // }
-
       await pConnection(
         queries.addException({
           type: endDate ? 2 : 1,
           time: dMYToUTCTime(startDate),
-          date_range_end: dMYToUTCTime(endDate),
+          date_range_end: !endDate ? null : dMYToUTCTime(endDate),
         })
       );
 
