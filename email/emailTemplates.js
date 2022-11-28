@@ -1,45 +1,97 @@
+const formatUTCForEmail = require("../util/formatUTCForEmail");
+const numToPrice = require("../util/numToPrice");
+
 const emailTemplates = {
-  contact: (clientEmail, { custName, custEmail, custMessage }) => {
+  contact: (richaEmail, { name, email, message }) => {
     return {
       from: process.env.EMAIL_SITE,
-      to: clientEmail,
-      subject: `Klover: Message from ${custName}`,
+      to: richaEmail,
+      subject: `Klover: Message from ${name}`,
       html: `<HTML>
             <body>
                 <h3>You have been contacted on Klover Healthcare!</h3>
-                <b>Name:</b> ${custName} <br/>
-                <b>Email:</b> ${custEmail} <br/>
+                Name: <b>${name} </b><br/>
+                Email:<b>${email} </b> <br/>
                 <br/>
-                <b>Message:</b> <br/>
-                ${custMessage}
+                Message: <br/>
+                ${message}
 
                 <br/>
                 <br/>
-                <b><u>Remember:</u> email them back directly at ${custEmail}</b>
+                <u>Remember: email them back directly at ${email}</u>
             </body>
         </HTML>`,
     };
   },
-  booking: (
-    clientEmail,
-    { product, amount, time, custName, custEmail, custPhone, couponId }
+  bookingForRicha: (
+    richaEmail,
+    {
+      productId,
+      timeslot,
+      firstName,
+      lastName,
+      email,
+      phone,
+      couponCode,
+      amount,
+    }
   ) => {
+    product = productId === 1 ? "Full Assessment" : "Pre-Assessment";
     return {
       from: process.env.EMAIL_SITE,
-      to: clientEmail,
-      subject: `Klover: ${product} booked by ${custName}`,
+      to: richaEmail,
+      subject: `Klover: ${product} booked!`,
       html: `<HTML>
             <body>
                 <h2>Booking Confirmation</h2>
-                <p>A <u>${product}</u> has been booked for <u>${time}</u> (UK time).</p>
-                <p><u>£${amount}</u> has been paid.</p>
-                <h3>Customer Details:</h3>
+                <p>What: <strong>${product.toUpperCase()}</strong><br/>
+               When: <strong>${formatUTCForEmail(timeslot)}<br/></strong>
+            Paid: <strong>£${numToPrice(amount)}</p></strong>
                 
-                <b>Name:</b> ${custName}<br/>
-                <b>Email:</b> ${custEmail}<br/>
-                <b>Phone:</b> ${custPhone}<br/>
-                ${couponId ? `<b>Coupon code:</b> ${couponId}` : ``}
+                <h3>Customer Details</h3>  
+              <p> Name: <b>${firstName} ${lastName}</b><br/>
+               Email: ${email}</b><br/>
+               Phone: <b>${phone}</b>
+                ${
+                  productId === 2
+                    ? `<br/>Full-assessment discount code: <b>${couponCode}</b>`
+                    : ""
+                }</p>
 
+                <u>Remember: email them back directly at ${email}</u>
+                </body>
+        </HTML>`,
+    };
+  },
+  bookingForClient: (
+    clientEmail,
+    { productId, timeslot, firstName, lastName, couponCode, amount }
+  ) => {
+    product = productId === 1 ? "Full Assessment" : "Pre-Assessment";
+    return {
+      from: process.env.EMAIL_SITE,
+      to: clientEmail,
+      subject: `Klover-Health: booking confirmation`,
+      html: `<HTML>
+            <body>
+                <h3>Klover-Health: Booking Confirmation</h3>
+                <p>Dear ${firstName} ${lastName}, <br/>
+                <br/>
+              This is an automated email to confirm that you have booked a <b>${product.toUpperCase()}</b> at <b>${formatUTCForEmail(
+        timeslot
+      )}</b>.</span><br/>
+                You have paid £${numToPrice(
+                  amount
+                )} and will recieve an email reciept from Stripe.<br/>
+                ${
+                  productId === 2
+                    ? `If you choose to purchase a full-assessment later, use this code to deduct what you have already paid: <b>${couponCode}</b><br/><br/>`
+                    : ""
+                }
+                <br/>If you need to change your appointment time or have any enquiries, please make contact via the "Get In Touch" form on the Klover Health website.
+                
+              
+                </p>
                 </body>
         </HTML>`,
     };

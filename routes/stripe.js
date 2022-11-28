@@ -1,184 +1,204 @@
 const express = require("express");
 const router = express.Router();
-const queries = require("../mySQL/queries.js");
-const pConnection = require("../mySQL/connection.js");
-const Stripe = require("stripe");
 module.exports = router;
-const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
-const products = require("../stripe/products");
+const queries = require("../mySQL/queries.js");
+const queriesCoupon = require("../mySQL/queriesCoupon");
+const pConnection = require("../mySQL/connection.js");
+const isJoiErrors = require("../joiValidator.js");
 const bodyParser = require("body-parser");
+const createCouponCode = require("../util/createCouponCode");
 const sendEmail = require("../email/nodeMailer");
-const numToPrice = require("../util/numToPrice");
-const emcaToString = require("../util/emcaToString");
 
-router.post("/payment", async (req, res) => {
-  console.log("to");
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+// const endpointSecret = process.env.STRIPE_ENDPOINT_SECRET;
+const endpointSecret =
+  "whsec_62a7963244bea5da65149d496175dc9fed11d576f0662cb9441b35df5bbac5c2";
+
+router.post("/check_coupon", bodyParser.json(), async (req, res) => {
+  const { couponCode } = req.body;
+  console.log("checking coupon", couponCode);
+
   try {
-    const payload = req.body;
-    let product = {};
+    // check coupon
+    async function couponCheck(couponCode) {
+      let couponCheck = await pConnection(queriesCoupon.getCoupon(couponCode));
 
-    // make sure valid productId has been sent
-    if (
-      payload.productId !== 1 &&
-      payload.productId !== 2 &&
-      typeof payload.timeslot !== "number"
-    )
-      return null;
-
-    const prices = await pConnection(queries.getAdminPrices());
-
-    // product = payload.productId === 1 ? products.assessment : products.pre_assessment;
-
-    if (payload.productId === 1) {
-      product = products.assessment;
-      product.price = prices[0].assessment;
-    } else {
-      product = products.pre_assessment;
-      product.price = prices[0].pre_assessment;
+      if (!couponCheck.length) {
+        return { couponError: "Discount code is invalid" };
+      } else if (couponCheck[0].redeemed > 0) {
+        return { couponError: "Discount code has already been redeemed" };
+      } else {
+        return { discount: couponCheck[0].amount };
+      }
     }
-    // console.log(product);
 
-    const session = await stripe.checkout.sessions.create({
-      line_items: [
-        {
-          price_data: {
-            unit_amount: product.price,
-            currency: "gbp",
-            product_data: {
-              name: product.name,
-              description: product.description(payload.timeslot),
-              // customer_details:
-              // customer_email
-            },
-          },
-          quantity: 1,
-        },
-      ],
-      // phone_number_collection: {
-      //   enabled: true,
-      // },
-      metadata: {
-        timeslot: payload.timeslot,
-        name: payload.name,
-        product: payload.productId === 1 ? "Full-Assessment" : "Pre-Assessment",
-      },
-      mode: "payment",
-      success_url: `${process.env.CLIENT_URL}`,
-      cancel_url: `${process.env.CLIENT_URL}#products`,
-      discounts:
-        payload.couponId.length > 0
-          ? [
-              {
-                coupon: payload.couponId,
-              },
-            ]
-          : [],
-    });
+    let result = await couponCheck(couponCode);
+    // returns {couponError: ""} or {couponDiscount: 111}
+    console.log(result);
 
-    console.log(session);
-
-    res.send({ status: 1, url: session.url });
+    res.send({ status: 1, ...result });
   } catch (error) {
     console.log(error);
     res.send({ status: 0, error });
   }
 });
 
-// bodyParser.raw({ type: "application/json" }),
+router.post("/create-payment-intent", bodyParser.json(), async (req, res) => {
+  let { productId, firstName, lastName, email, phone, timeslot, couponCode } =
+    req.body;
+  console.log("request for payment intent creation");
+  // console.log(req.body);
+  try {
+    // validate user information
+    let validationErrors = {};
+    validationErrors = await isJoiErrors.checkout({
+      firstName,
+      lastName,
+      email,
+      phone,
+    });
+    if (timeslot < 1)
+      validationErrors["timeslot"] = "Select an appointment slot";
 
-// stripe webhook for succesful payment
-router.post("/webhook", async (request, response) => {
-  const payload = request.body;
+    // IF VALIDATION FAILS
+    if (Object.entries(validationErrors).length > 0) {
+      // SEND BACK ERRORS
 
-  switch (payload.type) {
-    case "checkout.session.completed":
-      // console.log(payload);
-      // console.log(payload.data.object.customer_details);
+      res.send({ status: 1, validationErrors });
+    } else {
+      // GET PRICE
+      const prices = await pConnection(queries.getPrices());
+      let price =
+        productId === 1 ? prices[0].assessment : prices[0].pre_assessment;
 
-      const { amount_total, customer_details, metadata } = payload.data.object;
-      const isPreAssessment = metadata.product === "Pre-Assessment";
-
-      const couponId = randomCodeGen();
-
-      // if pre-assessment purchased, create coupon
-      if (isPreAssessment) {
-        console.log("pre-assessment");
-        // const couponId = randomCodeGen();
-        const prices = await pConnection(queries.getAdminPrices());
-        const discount = prices[0].pre_assessment;
-        const expireDate = (noOfMonths, startTime) => {
-          let date = new Date(startTime);
-          date.setMonth(date.getMonth() + noOfMonths);
-          return Number(date.getTime()) / 1000;
-        };
-
-        const coupon = await stripe.coupons.create({
-          id: couponId,
-          amount_off: discount,
-          max_redemptions: 1,
-          currency: "gbp",
-          redeem_by: expireDate(12, Number(metadata.timeslot)),
-        });
-        console.log("COUPON");
-        console.log(coupon);
+      // DEDUCT COUPON DISCOUNT
+      if (couponCode.length && productId === 1) {
+        let couponInfo = await pConnection(queriesCoupon.getCoupon(couponCode));
+        // if coupon is valid, deduct price, else make sure couponCode is null
+        couponInfo.length ? (price -= couponInfo[0].amount) : (couponCode = "");
+      } else {
+        couponCode = "";
       }
 
-      // email confirmation to Richa
-      await sendEmail("booking", {
-        product: metadata.product,
-        amount: numToPrice(amount_total),
-        time: emcaToString(Number(metadata.timeslot)),
-        custName: metadata.name,
-        custEmail: customer_details.email,
-        custPhone: customer_details.phone,
-        couponId: isPreAssessment ? couponId : null,
+      // CREATE PAYMENT INTENT
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: price, //sql call to grab price depending on item
+        currency: "gbp",
+        automatic_payment_methods: {
+          enabled: true,
+        },
+        receipt_email: email,
+        metadata: { ...req.body },
       });
 
-      // add timeslot to exception
-      await pConnection(
-        queries.addException({
-          type: 0,
-          time: Number(metadata.timeslot),
-          date_range_end: null,
-        })
-      );
-
-      break;
-
-    // send invoice to user
-    // send invoice to customer (if pre-assesment-send code)
-
-    case "payment_intent.succeeded":
-      console.log("sent the monies!");
-      // Then define and call a function to handle the event payment_intent.succeeded
-      break;
-    // ... handle other event types
-    default:
-      console.log(`Unhandled event type ${payload.type}`);
+      res.send({
+        status: 1,
+        clientSecret: paymentIntent.client_secret,
+      });
+    }
+  } catch (error) {
+    console.log(error);
+    res.send({ status: 0, error });
   }
-
-  response.status(200);
 });
 
-let randomCodeGen = () => {
-  let s4 = () => {
-    return Math.floor((1 + Math.random()) * 0x10000)
-      .toString(16)
-      .substring(1);
-  };
-  //return id of format 'aaaaaaaa'-'aaaa'-'aaaa'-'aaaa'-'aaaaaaaaaaaa'
-  return (
-    s4() +
-    s4() +
-    "-" +
-    s4() +
-    "-" +
-    s4() +
-    "-" +
-    s4() +
-    "-" +
-    s4() +
-    s4() +
-    s4()
-  );
+// listen for payment confirmation from stripe
+router.post(
+  "/webhook",
+  express.raw({ type: "application/json" }),
+  async (req, res) => {
+    // console.log("recieved! ");
+    // console.log(req.body);
+    let event = req.body;
+    try {
+      // confirm stripe endpoint secret
+      if (endpointSecret) {
+        // Get the signature sent by Stripe
+        const signature = req.headers["stripe-signature"];
+        try {
+          event = stripe.webhooks.constructEvent(
+            req.body,
+            signature,
+            endpointSecret
+          );
+        } catch (err) {
+          console.log(
+            `⚠️  Webhook signature verification failed.`,
+            err.message
+          );
+          return res.sendStatus(400);
+        }
+      }
+
+      // Handle the event (create/redeem coupon, make timeslot unavailable, send confirmation emails)
+      if (event.type === "payment_intent.succeeded") {
+        const paymentIntent = event.data.object;
+        await handlePaymentIntentSucceeded(paymentIntent);
+        console.log(
+          `PaymentIntent for ${paymentIntent.amount} was successful!`
+        );
+      } else {
+        console.log(`Unhandled event type ${event.type}.`);
+      }
+
+      res.sendStatus(200);
+    } catch (error) {
+      console.log(error);
+      res.sendStatus(400);
+    }
+  }
+);
+
+const handlePaymentIntentSucceeded = async (paymentIntent) => {
+  //stripe metadata turns all values to strings
+  paymentIntent.metadata.productId = Number(paymentIntent.metadata.productId);
+  paymentIntent.metadata.timeslot = Number(paymentIntent.metadata.timeslot);
+  let { productId, firstName, lastName, email, phone, timeslot, couponCode } =
+    paymentIntent.metadata;
+
+  console.log("HANDLING PAYMENT-INTENT-SUCCESS EVENT");
+  console.log(paymentIntent.metadata);
+  try {
+    // COUPON
+    // if pre-assessment, create coupon code.
+    let newCCode = "";
+    if (productId === 2) {
+      console.log("CREATE COUPON CODE");
+      newCCode = createCouponCode(lastName, 9);
+      console.log("creating new coupon", newCCode);
+      await pConnection(
+        queriesCoupon.addCoupon(newCCode, paymentIntent.amount)
+      );
+      paymentIntent.metadata.couponCode = newCCode;
+      console.log("coupon created");
+    }
+    // if assessment + coupon used, redeem coupon
+    if (productId === 1 && couponCode.length) {
+      await pConnection(queriesCoupon.redeemCoupon(couponCode));
+      console.log("coupon redeemed");
+    }
+
+    // ADD TIMESLOT TO UNAVAILABILITY
+    await pConnection(queries.addUnavailability({ type: 0, time: timeslot }));
+
+    // console.log("EMAIL DATA: ", {
+    //   ...paymentIntent.metadata,
+    //   amount: paymentIntent.amount,
+    // });
+
+    // SEND CONFIRMATION EMAIL TO RICHA + CLIENT
+
+    await sendEmail("booking-richa", {
+      ...paymentIntent.metadata,
+      amount: paymentIntent.amount,
+    });
+
+    await sendEmail("booking-client", {
+      ...paymentIntent.metadata,
+      amount: paymentIntent.amount,
+    });
+  } catch (error) {
+    console.log(error);
+    return error;
+  }
 };

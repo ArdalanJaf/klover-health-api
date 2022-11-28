@@ -53,7 +53,6 @@ const calcBookingTimeslots = (
             !isTimeslotUnavailable(timeslot, unavailableSlots) &&
             timeslot.getTime() > now
           ) {
-            // push timeslot into output array as EMCA int.
             output.push(timeslot.getTime());
           }
         }

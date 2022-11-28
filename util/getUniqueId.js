@@ -1,4 +1,5 @@
 const getUniqueId = (length) => {
+  // used to generate token
   const now = Date.now().toString();
   let uniqueId = "";
   const chars =

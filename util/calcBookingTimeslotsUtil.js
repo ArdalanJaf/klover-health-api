@@ -36,7 +36,7 @@ const util = {
   },
 
   isDateUnavailable: (date, unavailableArr) => {
-    // check if date matches with unavailable dates
+    // returns true if date matches with any unavailable dates
     // date = date object that is being checked
     // eArray = array of dates (EMCA int) or date ranges (array of 2 EMCA ints) that are unavailable
     return unavailableArr.find((uA) => {

@@ -1,33 +1,30 @@
-const queries = require("../mySQL/queries.js");
-const pConnection = require("../mySQL/connection.js");
 const express = require("express");
-const isJoiErrors = require("../joiValidator.js");
 const router = express.Router();
 module.exports = router;
+const isJoiErrors = require("../joiValidator.js");
 const sendEmail = require("../email/nodeMailer");
 
 router.post("/", async (req, res) => {
   console.log("recieved");
-
   try {
-    const isJoiErrorsResults = await isJoiErrors(req.body);
-    if (isJoiErrorsResults === false) {
+    const joiErrors = await isJoiErrors.contact(req.body);
+    if (Object.entries(joiErrors).length > 0) {
+      // Send validation-errors to front-end.
+      res.send({ status: 1, joiErrors });
+    } else {
+      //send email
       const { email, name, message } = req.body;
 
       await sendEmail("contact", {
-        custName: name,
-        custEmail: email,
-        custMessage: message,
+        name,
+        email,
+        message,
       });
 
-      // 3. Tell front-end it worked.
       res.send({ status: 1 });
-    } else {
-      // Send validation-errors to front-end.
-      res.send({ status: 1, joiErrors: isJoiErrorsResults });
     }
   } catch (error) {
-    console.log("failed");
-    res.send({ status: 0 });
+    console.log(error);
+    res.send({ status: 0, error });
   }
 });

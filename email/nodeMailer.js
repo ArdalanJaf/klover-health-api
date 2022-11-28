@@ -21,15 +21,19 @@ const transporter = nodemailer.createTransport({
 async function sendEmail(type, emailData) {
   let mailOptions = {};
 
-  const results = await pConnection(queries.getAdminContact());
-  let clientEmail = results[0].email;
+  // fetch Richa's email
+  const results = await pConnection(queries.getContact());
+  let richaEmail = results[0].email;
 
   switch (type) {
     case "contact":
-      mailOptions = emailTemplates.contact(clientEmail, emailData);
+      mailOptions = emailTemplates.contact(richaEmail, emailData);
       break;
-    case "booking":
-      mailOptions = emailTemplates.booking(clientEmail, emailData);
+    case "booking-richa":
+      mailOptions = emailTemplates.bookingForRicha(richaEmail, emailData);
+      break;
+    case "booking-client":
+      mailOptions = emailTemplates.bookingForClient(emailData.email, emailData);
       break;
     default:
       console.log("No type match.");

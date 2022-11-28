@@ -18,4 +18,7 @@ module.exports = {
           WHERE
                 token = "${token}"`;
   },
+  deleteAllTokens: function () {
+    return `DELETE from tokens`;
+  },
 };

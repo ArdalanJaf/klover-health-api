@@ -1,9 +1,9 @@
-const queries = require("../mySQL/queries.js");
-const queriesLogin = require("../mySQL/queriesLogin");
-const pConnection = require("../mySQL/connection.js");
 const express = require("express");
 const router = express.Router();
 module.exports = router;
+const queries = require("../mySQL/queries.js");
+const queriesLogin = require("../mySQL/queriesLogin");
+const pConnection = require("../mySQL/connection.js");
 const calcBookingTimeslots = require("../calcBookingTimeslots.js");
 const sortTimeslotObjs = require("../util/sortTimeslotObjs");
 const sortExceptionObjs = require("../util/sortExceptionObjs");
@@ -11,39 +11,28 @@ const flattenArrToTimes = require("../util/flattenArrToTimes.js");
 const splitDatesAndSlots = require("../util/splitDatesAndSlots.js");
 const dMYToUTCTime = require("../util/dMYToUTCTime");
 const getUniqueId = require("../util/getUniqueId");
+const formatTsOptions = require("../util/formatTsOptions");
 const middleware = require("../middleware");
 
-router.get("/contact", async (_, res) => {
-  // console.log("recieved");
+router.get("/contact", middleware.validateToken, async (_, res) => {
+  console.log("contact req recieved");
   try {
-    let result = await pConnection(queries.getAdminContact());
+    let result = await pConnection(queries.getContact());
 
-    res.send({ status: 1, result });
+    res.send({ status: 1, email: result[0].email });
   } catch (error) {
+    console.log(error);
     res.send({ status: 0, error });
   }
 });
 
-// req.body = {phone: "x", email: "x"}
-router.post("/contact", middleware.validateToken, async (req, res) => {
-  console.log("contact recieved");
+router.post("/update_contact", middleware.validateToken, async (req, res) => {
+  console.log("update_contact req recieved", req.body);
   try {
-    const { email, phone } = req.body;
-    let results;
-    if (email && phone) {
-      results = await pConnection(
-        queries.addContact(email.toString(), phone.toString())
-      );
-    } else {
-      let result = await pConnection(queries.getContact());
-      let oldPhone = result[0].phone;
-      let oldEmail = result[0].email;
-      results = !phone
-        ? await pConnection(queries.addContact(email.toString(), oldPhone))
-        : await pConnection(queries.addContact(oldEmail, phone.toString()));
-    }
+    await pConnection(queries.updateContact(req.body.email.toString()));
     res.send({ status: 1 });
   } catch (error) {
+    console.log(error);
     res.send({ status: 0, error });
   }
 });
@@ -61,10 +50,10 @@ router.get("/prices", async (_, res) => {
   }
 });
 
-router.post("/change_prices", middleware.validateToken, async (req, res) => {
+router.post("/update_prices", middleware.validateToken, async (req, res) => {
   try {
     await pConnection(
-      queries.addPrices(req.body.preAssessment, req.body.assessment)
+      queries.updatePrices(req.body.preAssessment, req.body.assessment)
     );
     res.send({ status: 1 });
   } catch (error) {
@@ -111,17 +100,9 @@ router.get("/timeslots_info", middleware.validateToken, async (_, res) => {
     );
     timeslots = sortTimeslotObjs(timeslots);
 
-    // let unavailability = JSON.parse(
-    //   JSON.stringify(await pConnection(queries.getUnavailability()))
-    // );
-    // unavailability = splitDatesAndSlots(sortExceptionObjs(unavailability));
-    // // why split? Do we just need dates? not slots?
-
     let timeslotOptions = formatTsOptions(
       await pConnection(queries.getTsOptions())
     );
-
-    console.log(timeslotOptions);
 
     res.send({ status: 1, timeslotInfo: { timeslots, timeslotOptions } });
   } catch (error) {
@@ -130,7 +111,40 @@ router.get("/timeslots_info", middleware.validateToken, async (_, res) => {
   }
 });
 
-// returns unavailability
+router.post(
+  "/update_ts_options",
+  middleware.validateToken,
+  async (req, res) => {
+    console.log("change ts options request");
+    try {
+      // check username + password are correct
+      await pConnection(queries.updateTsOptions(req.body));
+      res.send({ status: 1 });
+    } catch (error) {
+      console.log(error);
+      res.send({ status: 0, error });
+    }
+  }
+);
+
+router.post("/del_timeslot", middleware.validateToken, async (req, res) => {
+  try {
+    await pConnection(queries.delTimeslot(Number(req.body.id)));
+    res.send({ status: 1 });
+  } catch (error) {
+    res.send({ status: 0, error });
+  }
+});
+
+router.post("/add_timeslot", middleware.validateToken, async (req, res) => {
+  try {
+    await pConnection(queries.addTimeslot(req.body.timeslot));
+    res.send({ status: 1 });
+  } catch (error) {
+    res.send({ status: 0, error });
+  }
+});
+
 router.get("/unavailability", middleware.validateToken, async (_, res) => {
   console.log("unavailability req recieved");
   try {
@@ -138,7 +152,6 @@ router.get("/unavailability", middleware.validateToken, async (_, res) => {
       JSON.stringify(await pConnection(queries.getUnavailability()))
     );
     unavailability = splitDatesAndSlots(sortExceptionObjs(unavailability));
-    console.log(unavailability.dates);
     res.send({
       status: 1,
       unavailability: unavailability.dates,
@@ -149,50 +162,18 @@ router.get("/unavailability", middleware.validateToken, async (_, res) => {
   }
 });
 
-router.post("/del_timeslot", middleware.validateToken, async (req, res) => {
-  try {
-    console.log(req.body);
-    await pConnection(queries.delTimeslot(Number(req.body.id)));
-
-    res.send({ status: 1 });
-  } catch (error) {
-    res.send({ status: 0, error });
-  }
-});
-
-router.post("/add_timeslot", middleware.validateToken, async (req, res) => {
-  try {
-    console.log(req.body);
-    await pConnection(queries.addTimeslot(req.body.timeslot));
-    // need worked confirmation
-    res.send({ status: 1 });
-  } catch (error) {
-    res.send({ status: 0, error });
-  }
-});
-
 router.post(
   "/add_unavailability",
   middleware.validateToken,
   async (req, res) => {
     console.log("req recieved", req.body);
     try {
-      // if (!req.body.date_range_end) req.body.date_range_end = null;
-      // console.log(req.body);
       const { startDate, endDate } = req.body;
-      // if (startDate === endDate) endDate = null;
-      // console.log("TEST", startDate, endDate);
-
-      // let sDate = dMYToUTCTime(startDate)
-      // let eDate = dMYToUTCTime(endDate)
-      // if (sDate === eDate) eDate = null;
-      // console.log(dMYToUTCTime(endDate));
-
       await pConnection(
-        queries.addException({
+        queries.addUnavailability({
           type: endDate ? 2 : 1,
           time: dMYToUTCTime(startDate),
-          date_range_end: !endDate ? null : dMYToUTCTime(endDate),
+          date_range_end: !endDate ? "NULL" : dMYToUTCTime(endDate),
         })
       );
 
@@ -210,7 +191,7 @@ router.post(
   async (req, res) => {
     console.log("del_exception", req.body);
     try {
-      await pConnection(queries.delException(Number(req.body.id)));
+      await pConnection(queries.delUnavailability(Number(req.body.id)));
       res.send({ status: 1 });
     } catch (error) {
       res.send({ status: 0, error });
@@ -218,38 +199,16 @@ router.post(
   }
 );
 
-router.post("/clean_exceptions", middleware.validateToken, async (_, res) => {
-  try {
-    let unavailability = JSON.parse(
-      JSON.stringify(await pConnection(queries.getUnavailability()))
-    );
-    let outOfDate = unavailability.filter((item) => {
-      let now = new Date();
-      now = now.getTime();
-      if (item.date_range_end) {
-        if (item.date_range_end < now) return true;
-      } else {
-        if (item.time < now) return true;
-      }
-    });
-    if (outOfDate.length > 0)
-      await pConnection(queries.cleanTimeslotExceptions(outOfDate));
-
-    res.send({ status: 1 });
-  } catch (error) {
-    res.send({ status: 0, error });
-  }
-});
-
 router.post("/login", async (req, res) => {
   console.log("login detected");
   // add delete all previous tokens?
   try {
+    await pConnection(queriesLogin.deleteAllTokens());
+
     // check username + password are correct
     let result = await pConnection(
       queriesLogin.checkUserAndPassword(req.body.username, req.body.password)
     );
-    console.log(result[0].count);
     // if username/password valid create + set token, send token to front
     if (result[0].count > 0) {
       const token = getUniqueId(128);
@@ -263,41 +222,3 @@ router.post("/login", async (req, res) => {
     res.send({ status: 0, error });
   }
 });
-
-router.post(
-  "/change_ts_options",
-  middleware.validateToken,
-  async (req, res) => {
-    console.log("change ts options attempted");
-    console.log(req.body);
-    try {
-      // check username + password are correct
-      await pConnection(queries.changeTsOptions(req.body));
-      res.send({ status: 1 });
-    } catch (error) {
-      console.log(error);
-      res.send({ status: 0, error });
-    }
-  }
-);
-
-function formatTsOptions(SQLObj) {
-  let {
-    fixed_max,
-    no_of_weeks,
-    max_date_year,
-    max_date_month,
-    max_date_date,
-    cushion_days,
-  } = SQLObj[0];
-  return {
-    fixedMax: fixed_max > 0 ? true : false,
-    noOfWeeks: no_of_weeks,
-    maxDate: {
-      year: max_date_year,
-      month: max_date_month,
-      date: max_date_date,
-    },
-    cushionDays: cushion_days,
-  };
-}
