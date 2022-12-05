@@ -35,6 +35,8 @@ async function sendEmail(type, emailData) {
     case "booking-client":
       mailOptions = emailTemplates.bookingForClient(emailData.email, emailData);
       break;
+    case "pay-link-confirmation":
+      mailOptions = emailTemplates.payLinkConfirmation(richaEmail, emailData);
     default:
       console.log("No type match.");
   }

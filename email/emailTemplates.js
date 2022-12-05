@@ -44,9 +44,9 @@ const emailTemplates = {
       html: `<HTML>
             <body>
                 <h2>Booking Confirmation</h2>
-                <p>What: <strong>${product.toUpperCase()}</strong><br/>
-               When: <strong>${formatUTCForEmail(timeslot)}<br/></strong>
-            Paid: <strong>£${numToPrice(amount)}</p></strong>
+                <p>What: <b>${product.toUpperCase()}</b><br/>
+               When: <b>${formatUTCForEmail(timeslot)}<br/></b>
+            Paid: <b>£${numToPrice(amount)}</p></b>
                 
                 <h3>Customer Details</h3>  
               <p> Name: <b>${firstName} ${lastName}</b><br/>
@@ -58,7 +58,7 @@ const emailTemplates = {
                     : ""
                 }</p>
 
-                <u>Remember: email them back directly at ${email}</u>
+                <u>Remember: email them directly at ${email}</u>
                 </body>
         </HTML>`,
     };
@@ -92,6 +92,25 @@ const emailTemplates = {
                 
               
                 </p>
+                </body>
+        </HTML>`,
+    };
+  },
+  payLinkConfirmation: (richaEmail, { clientEmail, amount }) => {
+    return {
+      from: process.env.EMAIL_SITE,
+      to: richaEmail,
+      subject: `Klover: paid through paylink!`,
+      html: `<HTML>
+            <body>
+                <h2>Payment Confirmation</h2>
+           <p> You have been paid through a payment link that you shared. <br/>
+           <br/>
+           Paid: <b>£${numToPrice(amount)}</b> <br/>
+            Client Email: <b>${clientEmail}</b> <br/>
+            <br/>
+            <br/>
+                <u>Remember: email them directly at ${clientEmail}</u></p>
                 </body>
         </HTML>`,
     };

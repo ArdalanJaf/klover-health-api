@@ -8,6 +8,8 @@ const isJoiErrors = require("../joiValidator.js");
 const bodyParser = require("body-parser");
 const createCouponCode = require("../util/createCouponCode");
 const sendEmail = require("../email/nodeMailer");
+const middleware = require("../middleware");
+const res = require("express/lib/response.js");
 
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 // const endpointSecret = process.env.STRIPE_ENDPOINT_SECRET;
@@ -43,6 +45,7 @@ router.post("/check_coupon", bodyParser.json(), async (req, res) => {
   }
 });
 
+// process payments from website
 router.post("/create-payment-intent", bodyParser.json(), async (req, res) => {
   let { productId, firstName, lastName, email, phone, timeslot, couponCode } =
     req.body;
@@ -102,6 +105,34 @@ router.post("/create-payment-intent", bodyParser.json(), async (req, res) => {
   }
 });
 
+// create payment link
+router.post(
+  "/create-payment-link",
+  middleware.validateToken,
+  bodyParser.json(),
+  async (req, res) => {
+    const productId = process.env.STRIPE_PAYMENT_LINK_PRODUCT_ID;
+
+    try {
+      const price = await stripe.prices.create({
+        currency: "gbp",
+        unit_amount: req.body.amount,
+        product: productId,
+        metadata: { productId: productId },
+      });
+
+      const paymentLink = await stripe.paymentLinks.create({
+        line_items: [{ price: price.id, quantity: 1 }],
+      });
+
+      res.send({ status: 1, url: paymentLink.url });
+    } catch (error) {
+      console.log(error);
+      res.send({ status: 0, error });
+    }
+  }
+);
+
 // listen for payment confirmation from stripe
 router.post(
   "/webhook",
@@ -133,7 +164,13 @@ router.post(
       // Handle the event (create/redeem coupon, make timeslot unavailable, send confirmation emails)
       if (event.type === "payment_intent.succeeded") {
         const paymentIntent = event.data.object;
-        await handlePaymentIntentSucceeded(paymentIntent);
+        if (Object.entries(paymentIntent.metadata).length < 1) {
+          // for pay link payments
+          await handlePayLinkPaymentIntentSucceeded(paymentIntent);
+        } else {
+          // for site purchase payments
+          await handlePaymentIntentSucceeded(paymentIntent);
+        }
         console.log(
           `PaymentIntent for ${paymentIntent.amount} was successful!`
         );
@@ -157,15 +194,12 @@ const handlePaymentIntentSucceeded = async (paymentIntent) => {
     paymentIntent.metadata;
 
   console.log("HANDLING PAYMENT-INTENT-SUCCESS EVENT");
-  console.log(paymentIntent.metadata);
   try {
     // COUPON
     // if pre-assessment, create coupon code.
     let newCCode = "";
     if (productId === 2) {
-      console.log("CREATE COUPON CODE");
       newCCode = createCouponCode(lastName, 9);
-      console.log("creating new coupon", newCCode);
       await pConnection(
         queriesCoupon.addCoupon(newCCode, paymentIntent.amount)
       );
@@ -181,13 +215,7 @@ const handlePaymentIntentSucceeded = async (paymentIntent) => {
     // ADD TIMESLOT TO UNAVAILABILITY
     await pConnection(queries.addUnavailability({ type: 0, time: timeslot }));
 
-    // console.log("EMAIL DATA: ", {
-    //   ...paymentIntent.metadata,
-    //   amount: paymentIntent.amount,
-    // });
-
     // SEND CONFIRMATION EMAIL TO RICHA + CLIENT
-
     await sendEmail("booking-richa", {
       ...paymentIntent.metadata,
       amount: paymentIntent.amount,
@@ -195,6 +223,20 @@ const handlePaymentIntentSucceeded = async (paymentIntent) => {
 
     await sendEmail("booking-client", {
       ...paymentIntent.metadata,
+      amount: paymentIntent.amount,
+    });
+  } catch (error) {
+    console.log(error);
+    return error;
+  }
+};
+
+const handlePayLinkPaymentIntentSucceeded = async (paymentIntent) => {
+  console.log("HANDLING PAYMENT-LINK-PAYMENT-INTENT-SUCCESS EVENT");
+  try {
+    // SEND CONFIRMATION EMAIL TO RICHA
+    await sendEmail("pay-link-confirmation", {
+      clientEmail: paymentIntent.receipt_email,
       amount: paymentIntent.amount,
     });
   } catch (error) {
