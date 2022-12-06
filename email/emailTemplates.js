@@ -103,6 +103,7 @@ const emailTemplates = {
       subject: `Klover: paid through paylink!`,
       html: `<HTML>
             <body>
+            <div></div>
                 <h2>Payment Confirmation</h2>
            <p> You have been paid through a payment link that you shared. <br/>
            <br/>

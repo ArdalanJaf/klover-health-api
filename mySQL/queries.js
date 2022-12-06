@@ -65,6 +65,17 @@ const queries = {
               cushion_days = ${payload.cushionDays}
                        WHERE id = 1;`;
   },
+  cleanUnavailability: function (payload) {
+    const arraySpreader = (arr) => {
+      let output = "";
+      arr.map((id, i) => {
+        output += `${i > 0 ? " OR" : ""} id = ${id}`;
+      });
+      return output;
+    };
+    return `DELETE FROM unavailability
+                WHERE${arraySpreader(payload)};`;
+  },
 };
 
 module.exports = queries;

@@ -12,6 +12,7 @@ const splitDatesAndSlots = require("../util/splitDatesAndSlots.js");
 const dMYToUTCTime = require("../util/dMYToUTCTime");
 const getUniqueId = require("../util/getUniqueId");
 const formatTsOptions = require("../util/formatTsOptions");
+const getOutOfDateUnavailabilityIds = require("../util/getOutOfDateUnavailabilityIds");
 const middleware = require("../middleware");
 
 router.get("/contact", middleware.validateToken, async (_, res) => {
@@ -219,6 +220,24 @@ router.post("/login", async (req, res) => {
       res.send({ status: 0, error: "Invalid username / password" });
     }
   } catch (error) {
+    res.send({ status: 0, error });
+  }
+});
+
+router.delete("/clean-unavailability", async (_, res) => {
+  console.log("CLEANING");
+  try {
+    let unavailability = JSON.parse(
+      JSON.stringify(await pConnection(queries.getUnavailability()))
+    );
+    let outOfDateIds = getOutOfDateUnavailabilityIds(unavailability);
+
+    if (outOfDateIds.length > 0)
+      await pConnection(queries.cleanUnavailability(outOfDateIds));
+
+    res.send({ status: 1 });
+  } catch (error) {
+    console.log(error);
     res.send({ status: 0, error });
   }
 });
