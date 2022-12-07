@@ -11,7 +11,7 @@ const emailTemplates = {
             <body>
                 <h3>You have been contacted on Klover Healthcare!</h3>
                 Name: <b>${name} </b><br/>
-                Email:<b>${email} </b> <br/>
+                Email: <b>${email} </b> <br/>
                 <br/>
                 Message: <br/>
                 ${message}

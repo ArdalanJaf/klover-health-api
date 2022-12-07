@@ -7,10 +7,11 @@ const sendEmail = require("../email/nodeMailer");
 router.post("/", async (req, res) => {
   console.log("recieved");
   try {
-    const joiErrors = await isJoiErrors.contact(req.body);
-    if (Object.entries(joiErrors).length > 0) {
+    const contactErrors = await isJoiErrors.contact(req.body);
+
+    if (Object.entries(contactErrors).length > 0) {
       // Send validation-errors to front-end.
-      res.send({ status: 1, joiErrors });
+      res.send({ status: 1, contactErrors });
     } else {
       //send email
       const { email, name, message } = req.body;

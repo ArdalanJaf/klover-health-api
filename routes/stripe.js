@@ -138,8 +138,6 @@ router.post(
   "/webhook",
   express.raw({ type: "application/json" }),
   async (req, res) => {
-    // console.log("recieved! ");
-    // console.log(req.body);
     let event = req.body;
     try {
       // confirm stripe endpoint secret
