@@ -5,7 +5,7 @@ const cors = require("cors");
 const app = express();
 const contact = require("./routes/contact.js");
 const admin = require("./routes/admin.js");
-const stripe = require("./routes/stripe.js");
+// const stripe = require("./routes/stripe.js");
 
 app.use(cors());
 app.use(express.static("public"));
@@ -17,7 +17,7 @@ app.get("/", (req, res) => {
 // app.use("/", router);
 app.use("/contact", bodyParser.json(), contact);
 app.use("/admin", bodyParser.json(), admin);
-app.use("/stripe", stripe);
+// app.use("/stripe", stripe);
 
 const port = process.env.PORT || 6088;
 
