@@ -1,5 +1,5 @@
-const pConnection = require("./mysql/connection");
-const queriesLogin = require("./mysql/queriesLogin");
+const pConnection = require("./mySQL/connection");
+const queriesLogin = require("./mySQL/queriesLogin");
 
 module.exports = {
   validateToken: async (req, res, next) => {
