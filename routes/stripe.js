@@ -9,12 +9,11 @@ const bodyParser = require("body-parser");
 const createCouponCode = require("../util/createCouponCode");
 const sendEmail = require("../email/nodeMailer");
 const middleware = require("../middleware");
-const res = require("express/lib/response.js");
 
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
-// const endpointSecret = process.env.STRIPE_ENDPOINT_SECRET;
-const endpointSecret =
-  "whsec_62a7963244bea5da65149d496175dc9fed11d576f0662cb9441b35df5bbac5c2";
+const endpointSecret = process.env.STRIPE_ENDPOINT_SECRET;
+// const endpointSecret =
+//   "whsec_62a7963244bea5da65149d496175dc9fed11d576f0662cb9441b35df5bbac5c2";
 
 router.post("/check_coupon", bodyParser.json(), async (req, res) => {
   const { couponCode } = req.body;
@@ -35,7 +34,6 @@ router.post("/check_coupon", bodyParser.json(), async (req, res) => {
     }
 
     let result = await couponCheck(couponCode);
-    // returns {couponError: ""} or {couponDiscount: 111}
     console.log(result);
 
     res.send({ status: 1, ...result });
@@ -165,9 +163,11 @@ router.post(
         if (Object.entries(paymentIntent.metadata).length < 1) {
           // for pay link payments
           await handlePayLinkPaymentIntentSucceeded(paymentIntent);
+          console.log("pay link intent success");
         } else {
           // for site purchase payments
           await handlePaymentIntentSucceeded(paymentIntent);
+          console.log("pay intent success");
         }
         console.log(
           `PaymentIntent for ${paymentIntent.amount} was successful!`
@@ -206,8 +206,11 @@ const handlePaymentIntentSucceeded = async (paymentIntent) => {
     }
     // if assessment + coupon used, redeem coupon
     if (productId === 1 && couponCode.length) {
-      await pConnection(queriesCoupon.redeemCoupon(couponCode));
-      console.log("coupon redeemed");
+      if (couponCode !== "TESTCODE") {
+        //CHANGE
+        await pConnection(queriesCoupon.redeemCoupon(couponCode));
+        console.log("coupon redeemed");
+      }
     }
 
     // ADD TIMESLOT TO UNAVAILABILITY
