@@ -9,8 +9,6 @@ const mysql = require("mysql");
 // });
 // connection.connect();
 
-// RUSSEL!!!! I just noticed I had to comment out this to make pool work. Could this be an issue, since you were talking about too many mysql connections..
-
 // pool version (to fix ECONNRESET error located in node_modules/mysql/lib/Connection)
 const connection = mysql.createPool({
   connectionLimit: 10,
