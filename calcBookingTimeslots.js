@@ -1,4 +1,3 @@
-// const dMYToUTCTime = require("./util/dMYToUTCTime");
 const {
   getEarliestUTCTime,
   getTotalDays,
