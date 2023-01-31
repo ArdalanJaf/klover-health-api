@@ -13,16 +13,17 @@ const queries = {
                 FROM contact
                     where id = 1`;
   },
-  updatePrices: function (preAssessment, assessment) {
+  updatePrices: function (preAssessment, assessment, docs) {
     return `UPDATE prices 
                 SET
                 pre_assessment = ${preAssessment},
                 assessment = ${assessment},
+                docs = ${docs},
                 entry_date = current_timestamp()
                     WHERE id = 1`;
   },
   getPrices: function () {
-    return `SELECT prices.pre_assessment, prices.assessment
+    return `SELECT prices.pre_assessment, prices.assessment, prices.docs
                 FROM prices
                     WHERE id = 1`;
   },

@@ -1,6 +1,14 @@
 const formatUTCForEmail = require("../util/formatUTCForEmail");
 const numToPrice = require("../util/numToPrice");
 
+const getProductName = (productId) => {
+  return productId === 1
+    ? "In-Person Assessment"
+    : productId === 2
+    ? "Remote Assessment"
+    : "GP Letter";
+};
+
 const emailTemplates = {
   contact: (richaEmail, { name, email, message }) => {
     return {
@@ -36,24 +44,29 @@ const emailTemplates = {
       amount,
     }
   ) => {
-    product = productId === 1 ? "Full Assessment" : "Pre-Assessment";
+    console.log(productId);
+
     return {
       from: process.env.EMAIL_SITE,
       to: richaEmail,
-      subject: `Klover: ${product} booked!`,
+      subject: `Klover: ${getProductName(productId)} booked!`,
       html: `<HTML>
             <body>
                 <h2>Booking Confirmation</h2>
-                <p>What: <b>${product.toUpperCase()}</b><br/>
-               When: <b>${formatUTCForEmail(timeslot)}<br/></b>
-            Paid: <b>£${numToPrice(amount)}</p></b>
+                <p>What: <b>${getProductName(productId).toUpperCase()}</b><br/>
+               ${
+                 productId === 1 || productId === 2
+                   ? `When: <b>${formatUTCForEmail(timeslot)}</b><br/>`
+                   : ""
+               }
+            Paid: <b>£${numToPrice(amount)}</b></p>
                 
                 <h3>Customer Details</h3>  
               <p> Name: <b>${firstName} ${lastName}</b><br/>
                Email: ${email}</b><br/>
                Phone: <b>${phone}</b>
                 ${
-                  productId === 2
+                  productId === 2 && couponCode.length > 1
                     ? `<br/>Full-assessment discount code: <b>${couponCode}</b>`
                     : ""
                 }</p>
@@ -67,7 +80,7 @@ const emailTemplates = {
     clientEmail,
     { productId, timeslot, firstName, lastName, couponCode, amount }
   ) => {
-    product = productId === 1 ? "Full Assessment" : "Pre-Assessment";
+    console.log(productId);
     return {
       from: process.env.EMAIL_SITE,
       to: clientEmail,
@@ -77,18 +90,22 @@ const emailTemplates = {
                 <h3>Klover-Health: Booking Confirmation</h3>
                 <p>Dear ${firstName} ${lastName}, <br/>
                 <br/>
-              This is an automated email to confirm that you have booked a <b>${product.toUpperCase()}</b> at <b>${formatUTCForEmail(
-        timeslot
-      )}</b>.</span><br/>
+              This is an automated email to confirm that you have booked a <b>${getProductName(
+                productId
+              ).toUpperCase()}</b>${
+        productId === 1 || productId === 2
+          ? ` at <b>${formatUTCForEmail(timeslot)}</b>`
+          : ""
+      }.</span><br/>
                 You have paid £${numToPrice(
                   amount
                 )} and will recieve an email reciept from Stripe.<br/>
                 ${
-                  productId === 2
+                  productId === 2 && couponCode.length > 1
                     ? `If you choose to purchase a full-assessment later, use this code to deduct what you have already paid: <b>${couponCode}</b><br/><br/>`
                     : ""
                 }
-                <br/>If you need to change your appointment time or have any enquiries, please make contact via the "Get In Touch" form on the Klover Health website.
+                <br/>If you have any enquiries, please make contact via the "Get In Touch" form on the Klover Health website.
                 
               
                 </p>

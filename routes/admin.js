@@ -44,6 +44,7 @@ router.get("/prices", async (_, res) => {
     let prices = {
       preAssessment: result[0].pre_assessment,
       assessment: result[0].assessment,
+      docs: result[0].docs,
     };
     res.send({ status: 1, prices });
   } catch (error) {
@@ -54,7 +55,11 @@ router.get("/prices", async (_, res) => {
 router.post("/update_prices", middleware.validateToken, async (req, res) => {
   try {
     await pConnection(
-      queries.updatePrices(req.body.preAssessment, req.body.assessment)
+      queries.updatePrices(
+        req.body.preAssessment,
+        req.body.assessment,
+        req.body.docs
+      )
     );
     res.send({ status: 1 });
   } catch (error) {
@@ -210,6 +215,7 @@ router.post("/login", async (req, res) => {
     let result = await pConnection(
       queriesLogin.checkUserAndPassword(req.body.username, req.body.password)
     );
+    console.log(result);
     // if username/password valid create + set token, send token to front
     if (result[0].count > 0) {
       const token = getUniqueId(128);

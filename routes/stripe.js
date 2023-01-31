@@ -44,6 +44,7 @@ router.post("/create-payment-intent", bodyParser.json(), async (req, res) => {
   let { productId, firstName, lastName, email, phone, timeslot, couponCode } =
     req.body;
   console.log("request for payment intent creation");
+  console.log(productId);
   // console.log(req.body);
   try {
     // validate user information
@@ -54,7 +55,7 @@ router.post("/create-payment-intent", bodyParser.json(), async (req, res) => {
       email,
       phone,
     });
-    if (timeslot < 1)
+    if (timeslot < 1 && (productId === 1 || productId === 2))
       validationErrors["timeslot"] = "Select an appointment slot";
 
     // IF VALIDATION FAILS
@@ -66,7 +67,11 @@ router.post("/create-payment-intent", bodyParser.json(), async (req, res) => {
       // GET PRICE
       const prices = await pConnection(queries.getPrices());
       let price =
-        productId === 1 ? prices[0].assessment : prices[0].pre_assessment;
+        productId === 1
+          ? prices[0].assessment
+          : productId === 2
+          ? prices[0].pre_assessment
+          : prices[0].docs;
 
       // DEDUCT COUPON DISCOUNT
       if (couponCode.length && productId === 1) {
@@ -87,7 +92,7 @@ router.post("/create-payment-intent", bodyParser.json(), async (req, res) => {
         receipt_email: email,
         metadata: { ...req.body },
       });
-
+      console.log(paymentIntent.client_secret);
       res.send({
         status: 1,
         clientSecret: paymentIntent.client_secret,
@@ -155,6 +160,7 @@ router.post(
 
       // Handle the event (create/redeem coupon, make timeslot unavailable, send confirmation emails)
       if (event.type === "payment_intent.succeeded") {
+        console.log("payment_intent.succeeded recieved");
         const paymentIntent = event.data.object;
         if (Object.entries(paymentIntent.metadata).length < 1) {
           // for pay link payments
@@ -186,26 +192,30 @@ const handlePaymentIntentSucceeded = async (paymentIntent) => {
     paymentIntent.metadata;
 
   console.log("HANDLING PAYMENT-INTENT-SUCCESS EVENT");
+  console.log(productId);
   try {
     // COUPON
     // if pre-assessment, create coupon code.
-    let newCCode = "";
-    if (productId === 2) {
-      newCCode = createCouponCode(lastName, 9);
-      await pConnection(
-        queriesCoupon.addCoupon(newCCode, paymentIntent.amount)
-      );
-      paymentIntent.metadata.couponCode = newCCode;
-      console.log("coupon created");
-    }
-    // if assessment + coupon used, redeem coupon
-    if (productId === 1 && couponCode.length) {
-      await pConnection(queriesCoupon.redeemCoupon(couponCode));
-      console.log("coupon redeemed");
-    }
+    // let newCCode = "";
+    // if (productId === 2) {
+    //   newCCode = createCouponCode(lastName, 9);
+    //   await pConnection(
+    //     queriesCoupon.addCoupon(newCCode, paymentIntent.amount)
+    //   );
+    //   paymentIntent.metadata.couponCode = newCCode;
+    //   console.log("coupon created");
+    // }
+    // // if assessment + coupon used, redeem coupon
+    // if (productId === 1 && couponCode.length) {
+    //   await pConnection(queriesCoupon.redeemCoupon(couponCode));
+    //   console.log("coupon redeemed");
+    // }
 
     // ADD TIMESLOT TO UNAVAILABILITY
-    await pConnection(queries.addUnavailability({ type: 0, time: timeslot }));
+    (productId === 1 || productId === 2) &&
+      (await pConnection(
+        queries.addUnavailability({ type: 0, time: timeslot })
+      ));
 
     // SEND CONFIRMATION EMAIL TO RICHA + CLIENT
     await sendEmail("booking-richa", {
