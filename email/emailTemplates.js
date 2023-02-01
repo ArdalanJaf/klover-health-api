@@ -88,7 +88,7 @@ const emailTemplates = {
       subject: `Klover-Health: booking confirmation`,
       html: `<HTML>
             <body>
-                <h3>Klover-Health: Booking Confirmation</h3>
+                <h3>Klover Healthcare Booking Confirmation</h3>
                 <p>Dear ${firstName} ${lastName}, <br/>
                 <br/>
               This is an automated email to confirm that you have ${
@@ -106,7 +106,7 @@ const emailTemplates = {
                     ? `If you choose to purchase a full-assessment later, use this code to deduct what you have already paid: <b>${couponCode}</b><br/><br/>`
                     : ""
                 }
-                <br/>If you have any enquiries, please make contact via the <a href="http://localhost:3000/#contact">"Get In Touch"</a> form on the Klover Health website.
+                <br/>If you have any enquiries, please make contact via the <a href="https://www.kloverhealthcare.com/#contact">"Get In Touch"</a> form on the Klover Health website.
                 
               
                 </p>
