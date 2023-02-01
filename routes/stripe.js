@@ -44,7 +44,6 @@ router.post("/create-payment-intent", bodyParser.json(), async (req, res) => {
   let { productId, firstName, lastName, email, phone, timeslot, couponCode } =
     req.body;
   console.log("request for payment intent creation");
-  console.log(productId);
   // console.log(req.body);
   try {
     // validate user information
@@ -92,7 +91,8 @@ router.post("/create-payment-intent", bodyParser.json(), async (req, res) => {
         receipt_email: email,
         metadata: { ...req.body },
       });
-      console.log(paymentIntent.client_secret);
+      console.log("LOOOOOOOK!!!!!!");
+      console.log(paymentIntent);
       res.send({
         status: 1,
         clientSecret: paymentIntent.client_secret,
@@ -111,7 +111,6 @@ router.post(
   bodyParser.json(),
   async (req, res) => {
     const productId = process.env.STRIPE_PAYMENT_LINK_PRODUCT_ID;
-
     try {
       const price = await stripe.prices.create({
         currency: "gbp",
