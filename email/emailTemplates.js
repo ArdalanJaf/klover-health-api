@@ -10,7 +10,7 @@ const getProductName = (productId) => {
 };
 
 const emailTemplates = {
-  contact: (richaEmail, { name, email, message }) => {
+  contact: (richaEmail, { name, email, tel, message }) => {
     return {
       from: process.env.EMAIL_SITE,
       to: richaEmail,
@@ -20,6 +20,7 @@ const emailTemplates = {
                 <h3>You have been contacted on Klover Healthcare!</h3>
                 Name: <b>${name} </b><br/>
                 Email: <b>${email} </b> <br/>
+                Phone: <b>${tel}</b> <br/>
                 <br/>
                 Message: <br/>
                 ${message}
@@ -90,9 +91,9 @@ const emailTemplates = {
                 <h3>Klover-Health: Booking Confirmation</h3>
                 <p>Dear ${firstName} ${lastName}, <br/>
                 <br/>
-              This is an automated email to confirm that you have booked a <b>${getProductName(
-                productId
-              ).toUpperCase()}</b>${
+              This is an automated email to confirm that you have ${
+                productId === 1 || productId === 2 ? "booked" : "paid for"
+              } a <b>${getProductName(productId).toUpperCase()}</b>${
         productId === 1 || productId === 2
           ? ` at <b>${formatUTCForEmail(timeslot)}</b>`
           : ""
@@ -105,7 +106,7 @@ const emailTemplates = {
                     ? `If you choose to purchase a full-assessment later, use this code to deduct what you have already paid: <b>${couponCode}</b><br/><br/>`
                     : ""
                 }
-                <br/>If you have any enquiries, please make contact via the "Get In Touch" form on the Klover Health website.
+                <br/>If you have any enquiries, please make contact via the <a href="http://localhost:3000/#contact">"Get In Touch"</a> form on the Klover Health website.
                 
               
                 </p>

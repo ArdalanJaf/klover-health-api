@@ -14,11 +14,12 @@ router.post("/", async (req, res) => {
       res.send({ status: 1, contactErrors });
     } else {
       //send email
-      const { email, name, message } = req.body;
+      const { email, name, tel, message } = req.body;
 
       await sendEmail("contact", {
         name,
         email,
+        tel,
         message,
       });
 

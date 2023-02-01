@@ -8,6 +8,11 @@ const isJoiErrors = {
         .required()
         .email({ tlds: { allow: false } }),
       name: Joi.string().required().max(32).min(1),
+      tel: Joi.string()
+        .regex(RegExp(/[\d+()]+/))
+        .required()
+        .max(16)
+        .min(1),
       message: Joi.string().required().min(1).max(1024),
     };
 
